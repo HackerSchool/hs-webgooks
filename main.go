@@ -49,7 +49,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
     
-    
+    formatMessage(webhook)
 	// Format the message for Discord
 	message := fmt.Sprintf(
 		"**New Task Created**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s",
