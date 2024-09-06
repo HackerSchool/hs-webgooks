@@ -4,10 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // Define the structure for the Vikunja webhook payload
@@ -26,6 +32,17 @@ type VikunjaWebhook struct {
 			Name string `json:"name"`
 		} `json:"doer"`
 	} `json:"data"`
+}
+
+// Variables used for command line parameters
+var (
+	Token string
+)
+
+func init() {
+
+	flag.StringVar(&Token, "t", "", "Bot Token")
+	flag.Parse()
 }
 
 // Handler for incoming webhook requests
@@ -48,8 +65,8 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
 		return
 	}
-    
-    formatMessage(webhook)
+
+	formatMessage(webhook)
 	// Format the message for Discord
 	message := fmt.Sprintf(
 		"**New Task Created**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s",
@@ -74,18 +91,20 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Message sent to Discord")
 }
 
-
 func formatMessage(webhook VikunjaWebhook) (string, error) {
-    var project string
-    index := strings.Index(webhook.Data.Task.Identifier, "-")
+	var project string
+	index := strings.Index(webhook.Data.Task.Identifier, "-")
 	if index != -1 {
 		// Get the substring up to the found index
 		project = webhook.Data.Task.Identifier[:index]
-    } else {
-        return "", errors.New("Not from known project")
-    }
-    fmt.Println(project)
-    return project, nil
+	} else {
+		return "", errors.New("Not from known project")
+	}
+	fmt.Println(project)
+
+	dg.ChannelMessageSend("1280543736199123068", project)
+
+	return project, nil
 }
 
 // Function to send a message to Discord
@@ -109,10 +128,46 @@ func sendToDiscord(webhookURL, message string) error {
 	return nil
 }
 
+var dg *discordgo.Session
+
 func main() {
-	http.HandleFunc("/", webhookHandler)
-	fmt.Println("Server is running on port 4030")
-	if err := http.ListenAndServe(":4030", nil); err != nil {
-		fmt.Printf("Server failed: %v\n", err)
+
+	go func() {
+		http.HandleFunc("/", webhookHandler)
+		fmt.Println("Server is running on port 4030")
+		if err := http.ListenAndServe(":4030", nil); err != nil {
+			fmt.Printf("Server failed: %v\n", err)
+		}
+	}()
+
+	dg, err := discordgo.New("Bot " + Token)
+	if err != nil {
+		fmt.Println("error creating Discord session,", err)
+		return
 	}
+
+	// Create a new Discord session using the provided bot token.
+	go func() {
+		// Open a websocket connection to Discord and begin listening.
+		err = dg.Open()
+		if err != nil {
+			fmt.Println("error opening connection,", err)
+			return
+		}
+	}()
+
+	// In this example, we only care about receiving message events.
+	dg.Identify.Intents = discordgo.IntentsGuildMessages
+
+	dg.ChannelMessageSend("1280543736199123068", "Pong!")
+
+	// Wait here until CTRL-C or other term signal is received.
+	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
+
+	// Cleanly close down the Discord session.
+	dg.Close()
+
 }
