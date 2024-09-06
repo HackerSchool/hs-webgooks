@@ -132,14 +132,6 @@ var dg *discordgo.Session
 
 func main() {
 
-	go func() {
-		http.HandleFunc("/", webhookHandler)
-		fmt.Println("Server is running on port 4030")
-		if err := http.ListenAndServe(":4030", nil); err != nil {
-			fmt.Printf("Server failed: %v\n", err)
-		}
-	}()
-
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
@@ -153,6 +145,14 @@ func main() {
 		if err != nil {
 			fmt.Println("error opening connection,", err)
 			return
+		}
+	}()
+
+	go func() {
+		http.HandleFunc("/", webhookHandler)
+		fmt.Println("Server is running on port 4030")
+		if err := http.ListenAndServe(":4030", nil); err != nil {
+			fmt.Printf("Server failed: %v\n", err)
 		}
 	}()
 
