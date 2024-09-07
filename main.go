@@ -35,6 +35,7 @@ type VikunjaWebhook struct {
 
 // Handler for incoming webhook requests
 func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request, channelIDs *map[string]string) {
+    fmt.Println("Yo, at the webhook handler")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -84,6 +85,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 
 func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]string) (string, error) {
 	var project string
+
 	index := strings.Index(webhook.Data.Task.Identifier, "-")
 	if index != -1 {
 		// Get the substring up to the found index
@@ -98,6 +100,7 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 	if !exists {
 		return "", fmt.Errorf("No project id found")
 	}
+    fmt.Println(chanID)
 	_, err := dg.ChannelMessageSend(chanID, project)
 	if err != nil {
 		return "", fmt.Errorf("Failed to send message to Discord channel: %v", err)
@@ -164,7 +167,7 @@ func main() {
 		return
 	}
 
-    err := godotenv.Load()
+    err = godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 		return
@@ -192,7 +195,7 @@ func main() {
 	// Start the HTTP server for handling webhooks
 	go func() {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			webhookHandler(dg, w, r, channelIDs) // Pass dg to the handler
+			webhookHandler(dg, w, r, &channelIDs) // Pass dg to the handler
 		})
 		fmt.Println("Server is running on port 4030")
 		if err := http.ListenAndServe(":4030", nil); err != nil {
