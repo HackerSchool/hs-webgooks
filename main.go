@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+    "github.com/joho/godotenv"
 )
 
 // Define the structure for the Vikunja webhook payload
@@ -34,15 +34,6 @@ type VikunjaWebhook struct {
 	} `json:"data"`
 }
 
-// Variables used for command line parameters
-var (
-	Token string
-)
-
-func init() {
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.Parse()
-}
 
 // Handler for incoming webhook requests
 func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
@@ -65,7 +56,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	project, err := formatMessage(dg, webhook)
+	formatMessage(dg, webhook)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -135,7 +126,18 @@ func sendToDiscord(webhookURL, message string) error {
 }
 
 func main() {
-	dg, err := discordgo.New("Bot " + Token)
+    err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+		return
+	}
+    
+    token := os.Getenv("DISCORD_BOT_TOKEN")
+	if token == "" {
+		fmt.Println("No token provided. Please set DISCORD_BOT_TOKEN in your .env file")
+		return
+	}
+	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
