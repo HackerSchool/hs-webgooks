@@ -5,31 +5,31 @@
     },
     "dev": {
         "channel_id": "888804138488569896",
-        "role_id": "ROLE_ID_FOR_DEV" 
+        "role_id": "766271908303339524" 
     },
     "admin": {
         "channel_id": "234567890123456789",
-        "role_id": "ROLE_ID_FOR_ADMIN" 
+        "role_id": "692564223384879194" 
     },
     "general": {
         "channel_id": "345678901234567890",
-        "role_id": "ROLE_ID_FOR_GENERAL" 
+        "role_id": "1009817410548797502" 
     },
     "rh": {
         "channel_id": "456789012345678901",
-        "role_id": "ROLE_ID_FOR_RH"
+        "role_id": "766272580721967108"
     },
     "tesouraria": {
         "channel_id": "567890123456789012",
-        "role_id": "ROLE_ID_FOR_TESOURARIA" 
+        "role_id": "1009817410548797502" 
     },
     "marketing": {
         "channel_id": "678901234567890123",
-        "role_id": "ROLE_ID_FOR_MARKETING" 
+        "role_id": "782995281489690634" 
     },
     "lobby": {
         "channel_id": "1028013306583207936",
-        "role_id": "ROLE_ID_FOR_LOBBY" 
+        "role_id": "899611560719286293" 
     }
 }
 
