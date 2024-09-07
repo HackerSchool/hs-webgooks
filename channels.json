@@ -1,35 +1,35 @@
 {
     "test": {
         "channel_id": "1281189983679414323",
-        "role_id": "1282053069034623007" // Replace with actual role ID
+        "role_id": "1282053069034623007" 
     },
     "dev": {
         "channel_id": "888804138488569896",
-        "role_id": "ROLE_ID_FOR_DEV" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_DEV" 
     },
     "admin": {
         "channel_id": "234567890123456789",
-        "role_id": "ROLE_ID_FOR_ADMIN" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_ADMIN" 
     },
     "general": {
         "channel_id": "345678901234567890",
-        "role_id": "ROLE_ID_FOR_GENERAL" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_GENERAL" 
     },
     "rh": {
         "channel_id": "456789012345678901",
-        "role_id": "ROLE_ID_FOR_RH" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_RH"
     },
     "tesouraria": {
         "channel_id": "567890123456789012",
-        "role_id": "ROLE_ID_FOR_TESOURARIA" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_TESOURARIA" 
     },
     "marketing": {
         "channel_id": "678901234567890123",
-        "role_id": "ROLE_ID_FOR_MARKETING" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_MARKETING" 
     },
     "lobby": {
         "channel_id": "1028013306583207936",
-        "role_id": "ROLE_ID_FOR_LOBBY" // Replace with actual role ID
+        "role_id": "ROLE_ID_FOR_LOBBY" 
     }
 }
 
