@@ -40,13 +40,12 @@ var (
 )
 
 func init() {
-
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
 }
 
 // Handler for incoming webhook requests
-func webhookHandler(w http.ResponseWriter, r *http.Request) {
+func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -66,7 +65,12 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	formatMessage(webhook)
+	project, err := formatMessage(dg, webhook)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Format the message for Discord
 	message := fmt.Sprintf(
 		"**New Task Created**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s",
@@ -77,8 +81,6 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		webhook.Data.Task.Identifier,
 		webhook.Data.Doer.Name,
 	)
-
-	// fmt.Println(webhook.Data)
 
 	// Send the message to Discord
 	discordWebhookURL := "https://discordapp.com/api/webhooks/1280543843485352098/fyGeVmR-iuTjgrJOjAmCnbvaRA0SYfyT9ztUyKTLeVVKokzLiJWIhFBBfto0xJ1ka3pL"
@@ -91,7 +93,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Message sent to Discord")
 }
 
-func formatMessage(webhook VikunjaWebhook) (string, error) {
+func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook) (string, error) {
 	var project string
 	index := strings.Index(webhook.Data.Task.Identifier, "-")
 	if index != -1 {
@@ -102,7 +104,11 @@ func formatMessage(webhook VikunjaWebhook) (string, error) {
 	}
 	fmt.Println(project)
 
-	dg.ChannelMessageSend("1280543736199123068", project)
+	// Send message to a specific Discord channel
+	_, err := dg.ChannelMessageSend("1280543736199123068", project)
+	if err != nil {
+		return "", fmt.Errorf("Failed to send message to Discord channel: %v", err)
+	}
 
 	return project, nil
 }
@@ -128,46 +134,39 @@ func sendToDiscord(webhookURL, message string) error {
 	return nil
 }
 
-var dg *discordgo.Session
-
 func main() {
-
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
 	}
 
-	// Create a new Discord session using the provided bot token.
-	go func() {
-		// Open a websocket connection to Discord and begin listening.
-		err = dg.Open()
-		if err != nil {
-			fmt.Println("error opening connection,", err)
-			return
-		}
-	}()
+	// Open a websocket connection to Discord and begin listening.
+	err = dg.Open()
+	if err != nil {
+		fmt.Println("error opening connection,", err)
+		return
+	}
+	defer dg.Close() // Ensure Discord session is closed at the end
 
+	// Start the HTTP server for handling webhooks
 	go func() {
-		http.HandleFunc("/", webhookHandler)
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler(dg, w, r) // Pass dg to the handler
+		})
 		fmt.Println("Server is running on port 4030")
 		if err := http.ListenAndServe(":4030", nil); err != nil {
 			fmt.Printf("Server failed: %v\n", err)
 		}
 	}()
 
-	// In this example, we only care about receiving message events.
-	dg.Identify.Intents = discordgo.IntentsGuildMessages
-
+	// Send a test message to a specific channel
 	dg.ChannelMessageSend("1280543736199123068", "Pong!")
 
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	fmt.Println("Bot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
-
-	// Cleanly close down the Discord session.
-	dg.Close()
-
 }
+
