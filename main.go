@@ -58,19 +58,19 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 
 	var webhook VikunjaWebhook
 	if err := json.Unmarshal(body, &webhook); err != nil {
-		http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
-		return
+		// http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
+		// return
 	}
 
 	switch webhook.EventName {
 	case "task.created":
 		if err := sendTaskCreated(dg, webhook, channelIDs); err != nil {
-		    http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
+		    // http.Error(w, err.Error(), http.StatusInternalServerError)
+      //       return
 		}
 	default:                    
-		http.Error(w, "Not Implemented", http.StatusInternalServerError)
-        return
+		// http.Error(w, "Not Implemented", http.StatusInternalServerError)
+        // return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -112,13 +112,9 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 
 	// Format the message for Discord
 	message := fmt.Sprintf(
-		"**New Task Created <@&%s>**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s ",
+		"**New Task Created <@&%s>**\n\n**Title:** %s\n**Created By:** %s ",
 		chanID.RoleID,
 		webhook.Data.Task.Title,
-		webhook.Data.Task.Description,
-		webhook.Data.Task.DueDate,
-		webhook.Data.Task.Priority,
-		webhook.Data.Task.Identifier,
 		webhook.Data.Doer.Name,
 	)
 
