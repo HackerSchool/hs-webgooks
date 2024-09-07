@@ -35,7 +35,7 @@ type VikunjaWebhook struct {
 
 // Handler for incoming webhook requests
 func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request, channelIDs *map[string]string) {
-    fmt.Println("Yo, at the webhook handler")
+	fmt.Println("Yo, at the webhook handler")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -55,15 +55,50 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	formatMessage(dg, webhook, channelIDs)
+	message, chanID, err := formatMessage(dg, webhook, channelIDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Println(chanID)
+	_, err = dg.ChannelMessageSend(chanID, message)
+	if err != nil {
+		http.Error(w, "Failed to send message to Discord", http.StatusInternalServerError)
+	}
+
+	// // Send the message to Discord
+	// discordWebhookURL := "https://discordapp.com/api/webhooks/1280543843485352098/fyGeVmR-iuTjgrJOjAmCnbvaRA0SYfyT9ztUyKTLeVVKokzLiJWIhFBBfto0xJ1ka3pL"
+	// if err := sendToDiscord(discordWebhookURL, message); err != nil {
+	// 	http.Error(w, "Failed to send message to Discord", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Message sent to Discord")
+}
+
+func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]string) (string, string, error) {
+	var project string
+
+	index := strings.Index(webhook.Data.Task.Identifier, "-")
+	if index != -1 {
+		// Get the substring up to the found index
+		project = webhook.Data.Task.Identifier[:index]
+	} else {
+		return "", "", errors.New("Not from known project")
+	}
+	fmt.Println(project)
+
+	// Send message to a specific Discord channel
+	chanID, exists := (*channelIDs)[project]
+	if !exists {
+		return "", "", fmt.Errorf("No project id found")
+	}
+
 	// Format the message for Discord
 	message := fmt.Sprintf(
-		"**New Task Created**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s",
+		"**New Task Created @mibis**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s ",
 		webhook.Data.Task.Title,
 		webhook.Data.Task.Description,
 		webhook.Data.Task.DueDate,
@@ -72,41 +107,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 		webhook.Data.Doer.Name,
 	)
 
-	// Send the message to Discord
-	discordWebhookURL := "https://discordapp.com/api/webhooks/1280543843485352098/fyGeVmR-iuTjgrJOjAmCnbvaRA0SYfyT9ztUyKTLeVVKokzLiJWIhFBBfto0xJ1ka3pL"
-	if err := sendToDiscord(discordWebhookURL, message); err != nil {
-		http.Error(w, "Failed to send message to Discord", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Message sent to Discord")
-}
-
-func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]string) (string, error) {
-	var project string
-
-	index := strings.Index(webhook.Data.Task.Identifier, "-")
-	if index != -1 {
-		// Get the substring up to the found index
-		project = webhook.Data.Task.Identifier[:index]
-	} else {
-		return "", errors.New("Not from known project")
-	}
-	fmt.Println(project)
-
-	// Send message to a specific Discord channel
-	chanID, exists := (*channelIDs)[project]
-	if !exists {
-		return "", fmt.Errorf("No project id found")
-	}
-    fmt.Println(chanID)
-	_, err := dg.ChannelMessageSend(chanID, project)
-	if err != nil {
-		return "", fmt.Errorf("Failed to send message to Discord channel: %v", err)
-	}
-
-	return project, nil
+	return message, chanID, nil
 }
 
 // Function to send a message to Discord
@@ -167,7 +168,7 @@ func main() {
 		return
 	}
 
-    err = godotenv.Load()
+	err = godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 		return
