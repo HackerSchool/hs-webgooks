@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
 	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 // Define the structure for the Vikunja webhook payload
@@ -61,27 +62,34 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	switch webhook.EventName {
+	case "task.created":
+		if err := sendTaskCreated(dg, webhook, channelIDs); err != nil {
+		    http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+		}
+	default:                    
+		http.Error(w, "Not Implemented", http.StatusInternalServerError)
+        return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Message sent to Discord")
+}
+
+func sendTaskCreated(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]ChannelInfo) error {
 	message, chanID, err := formatMessage(dg, webhook, channelIDs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("Error reading channel IDs")
 	}
 
 	fmt.Println(chanID)
 	_, err = dg.ChannelMessageSend(chanID, message)
 	if err != nil {
-		http.Error(w, "Failed to send message to Discord", http.StatusInternalServerError)
+        return errors.New("Failed to send message to Discord")
 	}
+    return nil
 
-	// // Send the message to Discord
-	// discordWebhookURL := "https://discordapp.com/api/webhooks/1280543843485352098/fyGeVmR-iuTjgrJOjAmCnbvaRA0SYfyT9ztUyKTLeVVKokzLiJWIhFBBfto0xJ1ka3pL"
-	// if err := sendToDiscord(discordWebhookURL, message); err != nil {
-	// 	http.Error(w, "Failed to send message to Discord", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Message sent to Discord")
 }
 
 func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]ChannelInfo) (string, string, error) {
@@ -105,7 +113,7 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 	// Format the message for Discord
 	message := fmt.Sprintf(
 		"**New Task Created <@&%s>**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s ",
-        chanID.RoleID,
+		chanID.RoleID,
 		webhook.Data.Task.Title,
 		webhook.Data.Task.Description,
 		webhook.Data.Task.DueDate,
