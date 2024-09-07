@@ -33,8 +33,14 @@ type VikunjaWebhook struct {
 	} `json:"data"`
 }
 
+// Define a struct to hold both the channel ID and the role ID
+type ChannelInfo struct {
+	ChannelID string `json:"channel_id"`
+	RoleID    string `json:"role_id"`
+}
+
 // Handler for incoming webhook requests
-func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request, channelIDs *map[string]string) {
+func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request, channelIDs *map[string]ChannelInfo) {
 	fmt.Println("Yo, at the webhook handler")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -78,7 +84,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 	fmt.Fprintln(w, "Message sent to Discord")
 }
 
-func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]string) (string, string, error) {
+func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]ChannelInfo) (string, string, error) {
 	var project string
 
 	index := strings.Index(webhook.Data.Task.Identifier, "-")
@@ -98,7 +104,8 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 
 	// Format the message for Discord
 	message := fmt.Sprintf(
-		"**New Task Created @mibis**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s ",
+		"**New Task Created <@&%s>**\n\n**Title:** %s\n**Description:** %s\n**Due Date:** %s\n**Priority:** %d\n**Identifier:** %s\n**Created By:** %s ",
+        chanID.RoleID,
 		webhook.Data.Task.Title,
 		webhook.Data.Task.Description,
 		webhook.Data.Task.DueDate,
@@ -107,7 +114,7 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 		webhook.Data.Doer.Name,
 	)
 
-	return message, chanID, nil
+	return message, chanID.ChannelID, nil
 }
 
 // Function to send a message to Discord
@@ -131,8 +138,8 @@ func sendToDiscord(webhookURL, message string) error {
 	return nil
 }
 
-// Function to load the channel IDs from a JSON file and return a map
-func loadChannelIDs(filename string) (map[string]string, error) {
+// Function to load the channel information from a JSON file and return a map of structs
+func loadChannelIDs(filename string) (map[string]ChannelInfo, error) {
 	// Open the file
 	file, err := os.Open(filename)
 	if err != nil {
@@ -146,17 +153,17 @@ func loadChannelIDs(filename string) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
 
-	// Declare the map to hold the channel IDs
-	channelIDs := make(map[string]string)
+	// Declare the map to hold the channel information (channel_id and role_id)
+	channelMap := make(map[string]ChannelInfo)
 
 	// Unmarshal the JSON into the map
-	err = json.Unmarshal(byteValue, &channelIDs)
+	err = json.Unmarshal(byteValue, &channelMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	// Return the map and nil error if everything is successful
-	return channelIDs, nil
+	return channelMap, nil
 }
 
 func main() {
