@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-
-	"github.com/bwmarrin/discordgo"
-    "github.com/joho/godotenv"
 )
 
 // Define the structure for the Vikunja webhook payload
@@ -34,9 +33,8 @@ type VikunjaWebhook struct {
 	} `json:"data"`
 }
 
-
 // Handler for incoming webhook requests
-func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
+func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Request, channelIDs *map[string]string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -56,7 +54,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	formatMessage(dg, webhook)
+	formatMessage(dg, webhook, channelIDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -84,7 +82,7 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 	fmt.Fprintln(w, "Message sent to Discord")
 }
 
-func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook) (string, error) {
+func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *map[string]string) (string, error) {
 	var project string
 	index := strings.Index(webhook.Data.Task.Identifier, "-")
 	if index != -1 {
@@ -96,7 +94,11 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook) (string, error
 	fmt.Println(project)
 
 	// Send message to a specific Discord channel
-	_, err := dg.ChannelMessageSend("1280543736199123068", project)
+	chanID, exists := (*channelIDs)[project]
+	if !exists {
+		return "", fmt.Errorf("No project id found")
+	}
+	_, err := dg.ChannelMessageSend(chanID, project)
 	if err != nil {
 		return "", fmt.Errorf("Failed to send message to Discord channel: %v", err)
 	}
@@ -125,14 +127,50 @@ func sendToDiscord(webhookURL, message string) error {
 	return nil
 }
 
+// Function to load the channel IDs from a JSON file and return a map
+func loadChannelIDs(filename string) (map[string]string, error) {
+	// Open the file
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Read the file contents
+	byteValue, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Declare the map to hold the channel IDs
+	channelIDs := make(map[string]string)
+
+	// Unmarshal the JSON into the map
+	err = json.Unmarshal(byteValue, &channelIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	// Return the map and nil error if everything is successful
+	return channelIDs, nil
+}
+
 func main() {
+
+	// Call the function to load channel IDs
+	channelIDs, err := loadChannelIDs("channels.json")
+	if err != nil {
+		fmt.Println("Error loading channel IDs:", err)
+		return
+	}
+
     err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 		return
 	}
-    
-    token := os.Getenv("DISCORD_BOT_TOKEN")
+
+	token := os.Getenv("DISCORD_BOT_TOKEN")
 	if token == "" {
 		fmt.Println("No token provided. Please set DISCORD_BOT_TOKEN in your .env file")
 		return
@@ -154,7 +192,7 @@ func main() {
 	// Start the HTTP server for handling webhooks
 	go func() {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			webhookHandler(dg, w, r) // Pass dg to the handler
+			webhookHandler(dg, w, r, channelIDs) // Pass dg to the handler
 		})
 		fmt.Println("Server is running on port 4030")
 		if err := http.ListenAndServe(":4030", nil); err != nil {
@@ -171,4 +209,3 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 }
-
