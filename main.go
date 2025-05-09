@@ -27,8 +27,8 @@ type VikunjaWebhook struct {
 			DueDate     string `json:"due_date"`
 			Priority    int    `json:"priority"`
 			Identifier  string `json:"identifier"`
-			Id          string `json:"id"`
-			Project     string `json:"project_id"`
+			Id          int `json:"id"`
+			Project     int `json:"project_id"`
 		} `json:"task"`
 		Doer struct {
 			Name string `json:"name"`
@@ -85,7 +85,7 @@ func sendTaskCreated(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *
 		return fmt.Errorf("Error reading channel IDs")
 	}
 
-	fmt.Println(chanID)
+	// fmt.Println(chanID)
 	_, err = dg.ChannelMessageSend(chanID, message)
 	if err != nil {
 		return errors.New("Failed to send message to Discord")
@@ -114,9 +114,9 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 
 	// Format the message for Discord
 	message := fmt.Sprintf(
-		"**New Task Created <@&%s>**\n\n"+
-			"**Title:** [%s](https://tasks.hackerschool.dev/tasks/%s)\n"+
-			"**Project:** [View Project](https://tasks.hackerschool.dev/projects/%s)\n"+
+		"## **New Task Created <@&%s>**\n\n"+
+			"**Task:** [%s](https://tasks.hackerschool.dev/tasks/%d)\n"+
+			"[**View Project**](https://tasks.hackerschool.dev/projects/%d)\n"+
 			"**Created By:** %s",
 		chanID.RoleID,
 		webhook.Data.Task.Title,
