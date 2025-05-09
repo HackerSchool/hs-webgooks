@@ -27,6 +27,8 @@ type VikunjaWebhook struct {
 			DueDate     string `json:"due_date"`
 			Priority    int    `json:"priority"`
 			Identifier  string `json:"identifier"`
+			Id          string `json:"id"`
+			Project     string `json:"project_id"`
 		} `json:"task"`
 		Doer struct {
 			Name string `json:"name"`
@@ -65,12 +67,12 @@ func webhookHandler(dg *discordgo.Session, w http.ResponseWriter, r *http.Reques
 	switch webhook.EventName {
 	case "task.created":
 		if err := sendTaskCreated(dg, webhook, channelIDs); err != nil {
-		    // http.Error(w, err.Error(), http.StatusInternalServerError)
-      //       return
+			// http.Error(w, err.Error(), http.StatusInternalServerError)
+			//       return
 		}
-	default:                    
+	default:
 		// http.Error(w, "Not Implemented", http.StatusInternalServerError)
-        // return
+		// return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -86,9 +88,9 @@ func sendTaskCreated(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *
 	fmt.Println(chanID)
 	_, err = dg.ChannelMessageSend(chanID, message)
 	if err != nil {
-        return errors.New("Failed to send message to Discord")
+		return errors.New("Failed to send message to Discord")
 	}
-    return nil
+	return nil
 
 }
 
@@ -112,9 +114,14 @@ func formatMessage(dg *discordgo.Session, webhook VikunjaWebhook, channelIDs *ma
 
 	// Format the message for Discord
 	message := fmt.Sprintf(
-		"**New Task Created <@&%s>**\n\n**Title:** %s\n**Created By:** %s ",
+		"**New Task Created <@&%s>**\n\n"+
+			"**Title:** [%s](https://tasks.hackerschool.dev/tasks/%s)\n"+
+			"**Project:** [View Project](https://tasks.hackerschool.dev/projects/%s)\n"+
+			"**Created By:** %s",
 		chanID.RoleID,
 		webhook.Data.Task.Title,
+		webhook.Data.Task.Id,
+		webhook.Data.Task.Project,
 		webhook.Data.Doer.Name,
 	)
 
